@@ -1,0 +1,276 @@
+#include <iostream>
+
+using namespace std;
+
+template <class T, int order>
+struct Node
+{
+    int counter;
+    T keys[order - 1];
+    Node *children[order];
+};
+
+template <class T, int order>
+class BTree
+{
+
+public:
+    bool search(const T& searchItem);
+    void insert(const T& insertItem);
+    void print();
+    BTree();
+
+protected:
+    Node<T, order> *root;
+
+private:
+    void searchNode(Node<T, order> *current, const T& item, bool& found, int& location);
+    void insertBTree(Node<T, order> *current, const T& insertItem, T& median, Node<T, order>* &rightChild, bool& isTaller);
+    void insertNode(Node<T, order> *current, const T& insertItem, Node<T, order>* &rightChild, int insertPosition);
+    void splitNode (Node<T, order> *current, const T& insertItem, Node<T, order>* rightChild, int insertPosition,
+                    Node<T, order>* &rightNode, T &median);
+    void helpForPrint(Node<T, order> *current);
+};
+
+template <class T, int order>
+BTree<T, order>::BTree()
+{
+    root = NULL;
+}
+
+template <class T, int order>
+bool BTree<T, order>::search(const T& searchItem)
+{
+    bool found = false;
+    int location;
+
+    Node<T, order> *current;
+
+    current = root;
+
+    while (current != NULL && !found)
+    {
+        searchNode(current, searchItem, found, location);
+
+        if (!found)
+            current = current->children[location];
+    }
+
+    return found;
+}
+
+template <class T, int order>
+void BTree<T, order>::searchNode
+                   (Node<T, order> *current,
+                    const T& item,
+                    bool& found, int& location)
+{
+    location = 0;
+
+    while (location < current->counter
+           && item > current->keys[location])
+        location++;
+
+    if (location < current->counter
+           && item == current->keys[location])
+        found = true;
+    else
+        found = false;
+}
+
+template <class T, int order>
+void BTree<T, order>::insert(const T& insertItem)
+{
+    bool isTaller = false;
+    T median;
+
+    Node<T, order> *rightChild;
+
+    insertBTree(root, insertItem, median,
+                rightChild, isTaller);
+
+    if (isTaller)
+    {
+        Node<T, order> *tempRoot;
+        tempRoot = new Node<T, order>;
+        tempRoot->counter = 1;
+        tempRoot->keys[0] = median;
+        tempRoot->children[0] = root;
+        tempRoot->children[1] = rightChild;
+
+        root = tempRoot;
+    }
+}
+
+template <class T, int order>
+void BTree<T, order>::insertBTree
+                   (Node<T, order> *current,
+                    const T& insertItem,
+                    T& median,
+                    Node<T, order>* &rightChild,
+                    bool& isTaller)
+{
+    int position;
+    isTaller = false;
+
+    if (current == NULL)
+    {
+        median = insertItem;
+        rightChild = NULL;
+        isTaller = true;
+    }
+    else
+    {
+        bool found;
+
+        searchNode(current, insertItem, found, position);
+
+        if (found)
+            cout << "Cannot insert duplicate record." << endl;
+        else
+        {
+            T newMedian;
+
+            Node<T, order> *newChild;
+
+            insertBTree(current->children[position], insertItem,
+                        newMedian, newChild, isTaller);
+
+            if (isTaller)
+            {
+                if (current->counter < order - 1)
+                {
+                    isTaller = false;
+                    insertNode(current, newMedian,
+                               newChild, position);
+                }
+                else
+                    splitNode(current, newMedian, newChild,
+                              position, rightChild, median);
+            }
+        }
+    }
+}
+
+template <class T, int order>
+void BTree<T, order>::insertNode
+                   (Node<T, order> *current,
+                    const T& insertItem,
+                    Node<T, order>* &rightChild,
+                    int insertPosition)
+{
+    int index;
+
+    for (index = current->counter; index > insertPosition;
+                                    index--)
+    {
+        current->keys[index] = current->keys[index - 1];
+        current->children[index + 1] = current->children[index];
+    }
+
+    current->keys[index] = insertItem;
+    current->children[index + 1] = rightChild;
+    current->counter++;
+}
+
+template <class T, int order>
+void BTree<T, order>::splitNode
+                   (Node<T, order> *current,
+                    const T& insertItem,
+                    Node<T, order>* rightChild,
+                    int insertPosition,
+                    Node<T, order>* &rightNode,
+                    T &median)
+{
+    rightNode = new Node<T, order>;
+
+    int mid = (order - 1) / 2;
+
+    if (insertPosition <= mid)
+    {
+        int index = 0;
+        int i = mid;
+
+        while (i < order - 1)
+        {
+            rightNode->keys[index] = current->keys[i];
+            rightNode->children[index + 1] =
+                                current->children[i + 1];
+            index++;
+            i++;
+        }
+
+        current->counter = mid;
+        insertNode(current, insertItem, rightChild,
+                   insertPosition);
+        (current->counter)--;
+
+        median = current->keys[current->counter];
+
+        rightNode->counter = index;
+        rightNode->children[0] =
+                  current->children[current->counter + 1];
+    }
+    else
+    {
+        int i = mid + 1;
+        int index = 0;
+
+        while (i < order - 1)
+        {
+            rightNode->keys[index] = current->keys[i];
+            rightNode->children[index + 1] =
+                                  current->children[i + 1];
+            index++;
+            i++;
+        }
+
+        current->counter = mid;
+        rightNode->counter = index;
+
+        median = current->keys[mid];
+        insertNode(rightNode, insertItem, rightChild,
+                   insertPosition - mid - 1);
+        rightNode->children[0] =
+                  current->children[current->counter + 1];
+    }
+}
+
+template <class T, int order>
+void BTree<T, order>::print()
+{
+    helpForPrint(root);
+}
+
+template <class T, int order>
+void BTree<T, order>::helpForPrint
+                     (Node<T, order> *current)
+{
+    if (current != NULL)
+    {
+        for(int i = 0 ; i < current->counter ; i++){
+            cout << current->keys[i] << " ";
+        }
+        cout << endl;
+        cout << "*****" << endl;
+        for(int i = 0 ; i < order ; i++){
+            helpForPrint(current->children[i]);
+        }
+    }
+}
+
+
+
+
+int main() {
+    BTree<int, 3> t;
+    t.insert(1);
+    t.insert(5);
+    t.insert(0);
+    t.insert(4);
+    t.insert(3);
+    t.insert(2);
+    t.print();
+
+    return 0;
+}

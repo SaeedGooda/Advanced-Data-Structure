@@ -1,0 +1,238 @@
+
+#include<iostream>
+#include <stdio.h>
+#include <cstddef>
+#include <iterator>
+
+
+template <class T>
+class List {
+/// Nodes
+public:
+    class Node {
+    public:
+        T data;
+        Node *next;
+        Node *prev;
+
+    public:
+        explicit Node(Node *next_, Node *prev_) : next(next_), prev(prev_) {}
+
+        explicit Node(const T &_data, Node *next_, Node *prev_) :
+                data(_data), next(next_), prev(prev_) {}
+
+        ~Node() {}
+    };
+///
+
+/// Iterators
+public:
+    class Iterator : public std::iterator<std::bidirectional_iterator_tag, T> {
+    public:
+        Node *position;
+        Node *tail;
+
+    public:
+        Iterator(Node *node) : position(node) {}
+
+        Iterator(Node *node, Node *_tail) : position(node), tail(_tail) {
+        }
+
+        Iterator &operator++() noexcept {
+            position = position->next;
+            return *this;
+        }
+
+        Iterator operator++(int) noexcept {
+            auto old = *this;
+            position = position->next;
+            return old;
+        }
+
+        Iterator &operator--() noexcept {
+            if (position == nullptr) position = tail;
+            else
+                position = position->prev;
+            return *this;
+        }
+
+        Iterator operator--(int) noexcept {
+            auto old = *this;
+            if (position == nullptr) position = tail;
+            else
+                position = position->prev;
+            return old;
+        }
+
+        T &operator*() const noexcept {
+            return (position->data);
+        }
+
+        bool operator!=(Iterator other) noexcept {
+            return position != other.position;
+        }
+
+        bool operator==(Iterator other) noexcept {
+            return position == other.position;
+        }
+
+
+        ~Iterator() {}
+    };
+///
+
+/// list
+private:
+    Node *head = nullptr;
+    Node *tail = nullptr;
+    size_t size_ = 0;
+
+public:
+    List() {}
+
+    void push_back(const T &_data) {
+        Node *node = new Node(_data, nullptr, tail);
+        if (tail != nullptr) {
+            node->prev = tail;
+            tail->next = node;
+            tail = node;
+        } else {
+            head = tail = node;
+        }
+        ++size_;
+    }
+
+
+
+    size_t size() {
+        return size_;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+    Iterator begin() {
+        return Iterator(head, tail);
+    }
+
+    Iterator begin() const {
+        return Iterator(head, tail);
+    }
+
+    Iterator end() {
+        Iterator iter(tail, nullptr);
+        return iter;
+    }
+
+    Iterator end() const {
+        Iterator iter(tail, nullptr);
+        return iter;
+    }
+
+    bool empty() const {
+        return head == nullptr;
+    }
+
+    ~List() {
+        Node * tmp = nullptr;
+        while (head)
+        {
+            tmp = head;
+            head = head->next;
+            delete tmp;
+        }
+        head = tail = nullptr;
+    }
+};
+//#include<list>
+#define MAX_CHAR 256
+using namespace std;
+
+class SuffixTrieNode
+{
+private:
+    SuffixTrieNode *children[MAX_CHAR];
+    List<int> *indexes;
+public:
+    SuffixTrieNode()
+    {
+        indexes = new List<int>;
+        for (int i = 0; i < MAX_CHAR; i++)
+          children[i] = NULL;
+    }
+    void insertSuffix(string s, int index){
+        indexes->push_back(index);
+
+        if (s.length() > 0)
+        {
+            char cIndex = s.at(0);
+
+            if (children[cIndex] == NULL)
+                children[cIndex] = new SuffixTrieNode();
+
+            children[cIndex]->insertSuffix(s.substr(1), index+1);
+        }
+    }
+    List<int>* search(string s){
+        if (s.length() == 0)
+        return indexes;
+
+        if (children[s.at(0)] != NULL)
+            return (children[s.at(0)])->search(s.substr(1));
+
+        else return NULL;
+    }
+};
+
+class SuffixTrie
+{
+private:
+    SuffixTrieNode root;
+public:
+    SuffixTrie(string txt)
+    {
+        for (int i = 0; i < txt.length(); i++)
+            root.insertSuffix(txt.substr(i), i);
+    }
+
+    void search(string s){
+        List<int> *result = root.search(s);
+
+        if (result == NULL)
+            cout << "Pattern not found" << endl;
+        else
+        {
+           //List<int>::Iterator i(result->begin());
+           auto i = result->begin();
+           int patLen = s.length();
+           for (i ; i != result->end()++; ++i)
+             cout << "Pattern found at position " << *i - patLen<< endl;
+        }
+    }
+};
+
+
+int main()
+{
+    // Let us build a suffix trie for text "geeksforgeeks.org"
+    string txt = "geeksforgeeks.org";
+    SuffixTrie S(txt);
+
+    cout << "Search for 'ee'" << endl;
+    S.search("ee");
+
+    cout << "\nSearch for 'geek'" << endl;
+    S.search("geek");
+
+    cout << "\nSearch for 'quiz'" << endl;
+    S.search("quiz");
+
+    cout << "\nSearch for 'forgeeks'" << endl;
+    S.search("forgeeks");
+
+    return 0;
+}
+
+
+
